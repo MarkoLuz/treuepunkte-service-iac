@@ -13,24 +13,29 @@ warm_containers = "EAGER"
 [default.local_start_lambda.parameters]
 warm_containers = "EAGER"
 
-[staging.global.parameters]
-stack_name = "treuepunkte-lambda-staging"
+[default.deploy.parameters]
+stack_name = "treuepunkte-iac-staging"
+resolve_s3 = true
+s3_prefix = "treuepunkte-iac-staging"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "AppEnv=\"staging\" DbPort=\"3306\" DbName=\"treuepunkte\" DbMasterUsername=\"admin\" VpcCidr=\"10.0.0.0/16\" PublicSubnet1Cidr=\"10.0.1.0/24\" PublicSubnet2Cidr=\"10.0.2.0/24\" PrivateSubnet1Cidr=\"10.0.11.0/24\" PrivateSubnet2Cidr=\"10.0.12.0/24\""
+image_repositories = []
+
+[default.global.parameters]
 region = "eu-west-1"
 
-[staging.deploy.parameters]
-capabilities = "CAPABILITY_IAM"
-confirm_changeset = true
-resolve_s3 = true
-s3_prefix = "treuepunkte-lambda-staging"
-parameter_overrides = "AppEnv=staging DbHost=treuepunkte-db.clywuu8sa4sa.eu-west-1.rds.amazonaws.com DbPort=3306 DbUser=treuepunkteuser DbName=treuepunkteDB DbPassSecretName=treuepunkte/dev/db/password LambdaSecurityGroupId=sg-003d787d7b87a8a4c LambdaSubnet1=subnet-0b02db1fa241a91bb LambdaSubnet2=subnet-0b6e401cc58f3b1c3 LambdaSubnet3=subnet-059039efc7d4685a2"
-
 [production.global.parameters]
-stack_name = "treuepunkte-lambda-production"
+stack_name = "treuepunkte-iac-production"
 region = "eu-west-1"
 
 [production.deploy.parameters]
 capabilities = "CAPABILITY_IAM"
 confirm_changeset = true
 resolve_s3 = true
-s3_prefix = "treuepunkte-lambda-production"
-parameter_overrides = "AppEnv=production DbHost=treuepunkte-db.clywuu8sa4sa.eu-west-1.rds.amazonaws.com DbPort=3306 DbUser=treuepunkteuser DbName=treuepunkteDB_prod DbPassSecretName=treuepunkte/dev/db/password LambdaSecurityGroupId=sg-003d787d7b87a8a4c LambdaSubnet1=subnet-0b02db1fa241a91bb LambdaSubnet2=subnet-0b6e401cc58f3b1c3 LambdaSubnet3=subnet-059039efc7d4685a2"
+s3_prefix = "treuepunkte-iac-production"
+parameter_overrides = "AppEnv=\"production\" DbPort=\"3306\" DbName=\"treuepunkte_prod\" DbMasterUsername=\"admin\" VpcCidr=\"10.1.0.0/16\" PublicSubnet1Cidr=\"10.1.1.0/24\" PublicSubnet2Cidr=\"10.1.2.0/24\" PrivateSubnet1Cidr=\"10.1.11.0/24\" PrivateSubnet2Cidr=\"10.1.12.0/24\""
+image_repositories = []
+
+
+

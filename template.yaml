@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: treuepunkte-lambda
+Description: treuepunkte-lambda-iac
 
 Parameters:
   AppEnv:
@@ -9,33 +9,37 @@ Parameters:
       - staging
       - production
 
-  DbHost:
-    Type: String
-
   DbPort:
     Type: String
     Default: "3306"
 
-  DbUser:
-    Type: String
-
   DbName:
     Type: String
+    Default: treuepunkte
 
-  DbPassSecretName:
+  DbMasterUsername:
     Type: String
+    Default: admin
 
-  LambdaSecurityGroupId:
-    Type: AWS::EC2::SecurityGroup::Id
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
 
-  LambdaSubnet1:
-    Type: AWS::EC2::Subnet::Id
+  PublicSubnet1Cidr:
+    Type: String
+    Default: 10.0.1.0/24
 
-  LambdaSubnet2:
-    Type: AWS::EC2::Subnet::Id
+  PublicSubnet2Cidr:
+    Type: String
+    Default: 10.0.2.0/24
 
-  LambdaSubnet3:
-    Type: AWS::EC2::Subnet::Id
+  PrivateSubnet1Cidr:
+    Type: String
+    Default: 10.0.11.0/24
+
+  PrivateSubnet2Cidr:
+    Type: String
+    Default: 10.0.12.0/24
 
 Globals:
   Function:
@@ -43,6 +47,245 @@ Globals:
     MemorySize: 128
 
 Resources:
+  TreuepunkteVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub treuepunkte-vpc-${AppEnv}
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub treuepunkte-igw-${AppEnv}
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref TreuepunkteVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref TreuepunkteVPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Ref PublicSubnet1Cidr
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub treuepunkte-public-1-${AppEnv}
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref TreuepunkteVPC
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: !Ref PublicSubnet2Cidr
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub treuepunkte-public-2-${AppEnv}
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref TreuepunkteVPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Ref PrivateSubnet1Cidr
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub treuepunkte-private-1-${AppEnv}
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref TreuepunkteVPC
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: !Ref PrivateSubnet2Cidr
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub treuepunkte-private-2-${AppEnv}
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref TreuepunkteVPC
+      Tags:
+        - Key: Name
+          Value: !Sub treuepunkte-public-rt-${AppEnv}
+
+  PublicDefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  NatEip:
+    Type: AWS::EC2::EIP
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      Domain: vpc
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatEip.AllocationId
+      SubnetId: !Ref PublicSubnet1
+      Tags:
+        - Key: Name
+          Value: !Sub treuepunkte-nat-${AppEnv}
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref TreuepunkteVPC
+      Tags:
+        - Key: Name
+          Value: !Sub treuepunkte-private-rt-${AppEnv}
+
+  PrivateDefaultRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet2
+      RouteTableId: !Ref PrivateRouteTable
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Treuepunkte Lambdas
+      VpcId: !Ref TreuepunkteVPC
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub treuepunkte-lambda-sg-${AppEnv}
+
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Treuepunkte RDS
+      VpcId: !Ref TreuepunkteVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub treuepunkte-db-sg-${AppEnv}
+
+  DatabaseSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for Treuepunkte RDS
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub treuepunkte-db-subnet-group-${AppEnv}
+
+  TreuepunkteDatabase:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Sub treuepunkte-${AppEnv}
+      Engine: mariadb
+      EngineVersion: "10.11.16"
+      DBInstanceClass: db.t4g.micro
+      AllocatedStorage: 20
+      StorageType: gp3
+      DBName: !Ref DbName
+      MasterUsername: !Ref DbMasterUsername
+      ManageMasterUserPassword: true
+      MasterUserSecret:
+        KmsKeyId: alias/aws/secretsmanager
+      VPCSecurityGroups:
+        - !GetAtt DatabaseSecurityGroup.GroupId
+      DBSubnetGroupName: !Ref DatabaseSubnetGroup
+      PubliclyAccessible: false
+      MultiAZ: false
+      BackupRetentionPeriod: 0
+      DeletionProtection: false
+
+  SchemaInitFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+    Properties:
+      CodeUri: schema-init/
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Architectures:
+        - x86_64
+      Timeout: 900
+      MemorySize: 256
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !GetAtt TreuepunkteDatabase.MasterUserSecret.SecretArn
+      Environment:
+        Variables:
+          DB_HOST: !GetAtt TreuepunkteDatabase.Endpoint.Address
+          DB_PORT: !Ref DbPort
+          DB_USER: !Ref DbMasterUsername
+          DB_PASS: !Sub "{{resolve:secretsmanager:${TreuepunkteDatabase.MasterUserSecret.SecretArn}:SecretString:password}}"
+          DB_NAME: !Ref DbName
+
+  SchemaInitCustomResource:
+    Type: Custom::SchemaInit
+    Properties:
+      ServiceToken: !GetAtt SchemaInitFunction.Arn
+      DbHost: !GetAtt TreuepunkteDatabase.Endpoint.Address
+      DbPort: !Ref DbPort
+      DbName: !Ref DbName
+
   TreuepunkteFunction:
     Type: AWS::Serverless::Function
     Metadata:
@@ -55,18 +298,24 @@ Resources:
         - x86_64
       VpcConfig:
         SecurityGroupIds:
-          - !Ref LambdaSecurityGroupId
+          - !Ref LambdaSecurityGroup
         SubnetIds:
-          - !Ref LambdaSubnet1
-          - !Ref LambdaSubnet2
-          - !Ref LambdaSubnet3
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !GetAtt TreuepunkteDatabase.MasterUserSecret.SecretArn
       Environment:
         Variables:
           APP_ENV: !Ref AppEnv
-          DB_HOST: !Ref DbHost
+          DB_HOST: !GetAtt TreuepunkteDatabase.Endpoint.Address
           DB_PORT: !Ref DbPort
-          DB_USER: !Ref DbUser
-          DB_PASS: !Sub "{{resolve:secretsmanager:${DbPassSecretName}}}"
+          DB_USER: !Ref DbMasterUsername
+          DB_PASS: !Sub "{{resolve:secretsmanager:${TreuepunkteDatabase.MasterUserSecret.SecretArn}:SecretString:password}}"
           DB_NAME: !Ref DbName
       Events:
         CatchAll:
@@ -92,3 +341,31 @@ Outputs:
   TreuepunkteFunctionRoleArn:
     Description: Implicit IAM Role for Treuepunkte function
     Value: !GetAtt TreuepunkteFunctionRole.Arn
+
+  DatabaseEndpoint:
+    Description: RDS endpoint
+    Value: !GetAtt TreuepunkteDatabase.Endpoint.Address
+
+  DatabasePort:
+    Description: RDS port
+    Value: !GetAtt TreuepunkteDatabase.Endpoint.Port
+
+  DatabaseSecretArn:
+    Description: Secrets Manager ARN for RDS master user
+    Value: !GetAtt TreuepunkteDatabase.MasterUserSecret.SecretArn
+
+  VpcId:
+    Description: VPC ID
+    Value: !Ref TreuepunkteVPC
+
+  PrivateSubnet1Id:
+    Description: Private subnet 1 ID
+    Value: !Ref PrivateSubnet1
+
+  PrivateSubnet2Id:
+    Description: Private subnet 2 ID
+    Value: !Ref PrivateSubnet2
+
+  LambdaSecurityGroupId:
+    Description: Lambda security group ID
+    Value: !Ref LambdaSecurityGroup
