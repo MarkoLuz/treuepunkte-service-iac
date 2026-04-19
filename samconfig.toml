@@ -1,0 +1,36 @@
+version = 0.1
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.validate.parameters]
+lint = true
+
+[default.local_start_api.parameters]
+warm_containers = "EAGER"
+
+[default.local_start_lambda.parameters]
+warm_containers = "EAGER"
+
+[staging.global.parameters]
+stack_name = "treuepunkte-lambda-staging"
+region = "eu-west-1"
+
+[staging.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+resolve_s3 = true
+s3_prefix = "treuepunkte-lambda-staging"
+parameter_overrides = "AppEnv=staging DbHost=treuepunkte-db.clywuu8sa4sa.eu-west-1.rds.amazonaws.com DbPort=3306 DbUser=treuepunkteuser DbName=treuepunkteDB DbPassSecretName=treuepunkte/dev/db/password LambdaSecurityGroupId=sg-003d787d7b87a8a4c LambdaSubnet1=subnet-0b02db1fa241a91bb LambdaSubnet2=subnet-0b6e401cc58f3b1c3 LambdaSubnet3=subnet-059039efc7d4685a2"
+
+[production.global.parameters]
+stack_name = "treuepunkte-lambda-production"
+region = "eu-west-1"
+
+[production.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+resolve_s3 = true
+s3_prefix = "treuepunkte-lambda-production"
+parameter_overrides = "AppEnv=production DbHost=treuepunkte-db.clywuu8sa4sa.eu-west-1.rds.amazonaws.com DbPort=3306 DbUser=treuepunkteuser DbName=treuepunkteDB_prod DbPassSecretName=treuepunkte/dev/db/password LambdaSecurityGroupId=sg-003d787d7b87a8a4c LambdaSubnet1=subnet-0b02db1fa241a91bb LambdaSubnet2=subnet-0b6e401cc58f3b1c3 LambdaSubnet3=subnet-059039efc7d4685a2"

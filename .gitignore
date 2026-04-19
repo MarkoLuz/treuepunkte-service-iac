@@ -1,0 +1,22 @@
+# Go
+bin/
+*.exe
+*.test
+
+# Build
+.aws-sam/
+bootstrap
+
+# Env
+.env
+.env.*
+
+# AWS CLI (cleanup)
+aws/
+awscliv2.zip
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/

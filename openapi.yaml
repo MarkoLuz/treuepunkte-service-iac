@@ -1,0 +1,573 @@
+openapi: 3.0.3
+
+info:
+  title: Treuepunkte Service API
+  version: 1.0.0
+  description: |
+    Minimal OpenAPI specification for the Treuepunkte Service.
+    Covers the currently implemented health, points, balance, and transaction endpoints.
+
+servers:
+  - url: http://localhost:8080
+    description: Local Docker environment
+  - url: https://{apiId}.execute-api.eu-west-1.amazonaws.com
+    description: AWS API Gateway
+    variables:
+      apiId:
+        default: example-id
+
+tags:
+  - name: Health
+  - name: Points
+  - name: Customers
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      operationId: getHealth
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                ok:
+                  value:
+                    status: ok
+
+  /v1/points/accrue:
+    post:
+      tags:
+        - Points
+      summary: Create pending loyalty points
+      operationId: postAccrue
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccrueRequest'
+            examples:
+              sample:
+                value:
+                  customer_id: cust-1
+                  order_id: order-1001
+                  points: 120
+                  idempotency_key: accrue-1001
+      responses:
+        '201':
+          description: Accrual created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+              examples:
+                created:
+                  value:
+                    status: created
+        '200':
+          description: Idempotent repeat request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+              examples:
+                ok:
+                  value:
+                    status: ok
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/points/confirm:
+    post:
+      tags:
+        - Points
+      summary: Confirm previously accrued points
+      operationId: postConfirm
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmRequest'
+            examples:
+              sample:
+                value:
+                  customer_id: cust-1
+                  order_id: order-1001
+                  idempotency_key: confirm-1001
+      responses:
+        '201':
+          description: Confirmation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+              examples:
+                created:
+                  value:
+                    status: created
+        '200':
+          description: Idempotent repeat request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+              examples:
+                ok:
+                  value:
+                    status: ok
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/points/revoke:
+    post:
+      tags:
+        - Points
+      summary: Revoke points for a returned order
+      operationId: postRevoke
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevokeRequest'
+            examples:
+              sample:
+                value:
+                  customer_id: cust-1
+                  order_id: order-1001
+                  return_id: return-1001
+                  idempotency_key: revoke-1001
+      responses:
+        '201':
+          description: Revoke created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+              examples:
+                created:
+                  value:
+                    status: created
+        '200':
+          description: Idempotent repeat request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+              examples:
+                ok:
+                  value:
+                    status: ok
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/points/redeem:
+    post:
+      tags:
+        - Points
+      summary: Redeem active loyalty points
+      operationId: postRedeem
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RedeemRequest'
+            examples:
+              sample:
+                value:
+                  customer_id: cust-1
+                  reference: redeem-1001
+                  points: 50
+                  idempotency_key: redeem-1001
+      responses:
+        '201':
+          description: Redemption created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+              examples:
+                created:
+                  value:
+                    status: created
+        '200':
+          description: Idempotent repeat request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+              examples:
+                ok:
+                  value:
+                    status: ok
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/points/restore:
+    post:
+      tags:
+        - Points
+      summary: Restore previously redeemed points
+      operationId: postRestore
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestoreRequest'
+            examples:
+              sample:
+                value:
+                  customer_id: cust-1
+                  reference: redeem-1001
+                  idempotency_key: restore-1001
+      responses:
+        '201':
+          description: Restore created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+              examples:
+                created:
+                  value:
+                    status: created
+        '200':
+          description: Idempotent repeat request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+              examples:
+                ok:
+                  value:
+                    status: ok
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/customers/{customerId}/balance:
+    get:
+      tags:
+        - Customers
+      summary: Get customer balance
+      operationId: getCustomerBalance
+      parameters:
+        - $ref: '#/components/parameters/CustomerIdPath'
+      responses:
+        '200':
+          description: Current balance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceResponse'
+              examples:
+                sample:
+                  value:
+                    customer_id: cust-1
+                    active_points: 100
+                    pending_points: 50
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/customers/{customerId}/transactions:
+    get:
+      tags:
+        - Customers
+      summary: Get customer transaction history
+      operationId: getCustomerTransactions
+      parameters:
+        - $ref: '#/components/parameters/CustomerIdPath'
+      responses:
+        '200':
+          description: Customer transaction list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransactionResponse'
+              examples:
+                sample:
+                  value:
+                    - id: 1
+                      customer_id: cust-1
+                      order_id: order-1001
+                      reference: null
+                      return_id: null
+                      kind: accrue
+                      status: pending
+                      points: 120
+                      occurred_at: "2026-04-16T18:00:00Z"
+                    - id: 2
+                      customer_id: cust-1
+                      order_id: order-1001
+                      reference: null
+                      return_id: null
+                      kind: confirm
+                      status: active
+                      points: 120
+                      occurred_at: "2026-04-16T18:05:00Z"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  parameters:
+    CustomerIdPath:
+      name: customerId
+      in: path
+      required: true
+      description: Customer identifier
+      schema:
+        type: string
+
+    IdempotencyKeyHeader:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Optional idempotency key header
+      schema:
+        type: string
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            badRequest:
+              value:
+                error: invalid input
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            notFound:
+              value:
+                error: not found
+
+    Conflict:
+      description: Conflict with current state
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            conflict:
+              value:
+                error: conflict
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            internalError:
+              value:
+                error: internal server error
+
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+      required:
+        - status
+
+    StatusResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - created
+            - ok
+      required:
+        - status
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    AccrueRequest:
+      type: object
+      properties:
+        customer_id:
+          type: string
+        order_id:
+          type: string
+        points:
+          type: integer
+        idempotency_key:
+          type: string
+      required:
+        - customer_id
+        - order_id
+        - points
+
+    ConfirmRequest:
+      type: object
+      properties:
+        customer_id:
+          type: string
+        order_id:
+          type: string
+        idempotency_key:
+          type: string
+      required:
+        - customer_id
+        - order_id
+
+    RevokeRequest:
+      type: object
+      properties:
+        customer_id:
+          type: string
+        order_id:
+          type: string
+        return_id:
+          type: string
+        idempotency_key:
+          type: string
+      required:
+        - customer_id
+        - order_id
+        - return_id
+
+    RedeemRequest:
+      type: object
+      properties:
+        customer_id:
+          type: string
+        reference:
+          type: string
+        points:
+          type: integer
+        idempotency_key:
+          type: string
+      required:
+        - customer_id
+        - reference
+        - points
+
+    RestoreRequest:
+      type: object
+      properties:
+        customer_id:
+          type: string
+        reference:
+          type: string
+        idempotency_key:
+          type: string
+      required:
+        - customer_id
+        - reference
+
+    BalanceResponse:
+      type: object
+      properties:
+        customer_id:
+          type: string
+        active_points:
+          type: integer
+        pending_points:
+          type: integer
+      required:
+        - customer_id
+        - active_points
+        - pending_points
+
+    TransactionResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 0
+        customer_id:
+          type: string
+        order_id:
+          type: string
+          nullable: true
+        reference:
+          type: string
+          nullable: true
+        return_id:
+          type: string
+          nullable: true
+        kind:
+          type: string
+        status:
+          type: string
+        points:
+          type: integer
+        occurred_at:
+          type: string
+      required:
+        - id
+        - customer_id
+        - kind
+        - status
+        - points
+        - occurred_at

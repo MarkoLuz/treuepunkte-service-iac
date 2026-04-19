@@ -1,0 +1,17 @@
+.git
+.gitignore
+.aws-sam
+.vscode
+docs
+README.md
+README_IHK.md
+PROJECT_IHK.md
+events
+samconfig.toml
+bootstrap
+aws
+awscliv2.zip
+**/*.md
+**/tmp
+**/bin
+**/.DS_Store
