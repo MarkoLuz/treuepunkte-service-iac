@@ -38,4 +38,15 @@ parameter_overrides = "AppEnv=\"production\" DbPort=\"3306\" DbName=\"treuepunkt
 image_repositories = []
 
 
+[staging.deploy.parameters]
+stack_name = "treuepunkte-iac-staging"
+resolve_s3 = true
+s3_prefix = "treuepunkte-iac-staging"
+region = "eu-west-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "AppEnv=\"staging\" DbPort=\"3306\" DbName=\"treuepunkte\" DbMasterUsername=\"admin\" VpcCidr=\"10.0.0.0/16\" PublicSubnet1Cidr=\"10.0.1.0/24\" PublicSubnet2Cidr=\"10.0.2.0/24\" PrivateSubnet1Cidr=\"10.0.11.0/24\" PrivateSubnet2Cidr=\"10.0.12.0/24\""
+image_repositories = []
 
+[staging.global.parameters]
+region = "eu-west-1"
