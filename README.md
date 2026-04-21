@@ -113,25 +113,51 @@ Repeated requests with the same key do not create duplicate transactions.
 
 ```text
 .
+├── Dockerfile
 ├── Makefile
 ├── README.md
 ├── README_IHK.md
 ├── docker-compose.yml
-├── template.yaml
-├── samconfig.toml
+├── events
+│   └── event.json
 ├── openapi.yaml
-├── events/
-├── sql/
-│   └── init/
-│       └── 001_schema.sql
-├── schema-init/
-│   └── main.go
-└── treuepunkte-function/
-    ├── integrationtests/
-    ├── internal/
-    ├── main.go
+├── samconfig.toml
+├── schema-init
+│   ├── go.mod
+│   ├── go.sum
+│   ├── main.go
+│   └── sql
+│       └── 001_schema.sql
+├── sql
+│   └── init
+│       └── 001_schema.sql
+├── template.yaml
+└── treuepunkte-function
     ├── go.mod
-    └── go.sum
+    ├── go.sum
+    ├── integrationtests
+    │   └── aws_integration_test.go
+    ├── internal
+    │   ├── config
+    │   │   └── config.go
+    │   ├── domain
+    │   │   ├── errors.go
+    │   │   ├── models.go
+    │   │   └── rules.go
+    │   ├── http
+    │   │   ├── dto.go
+    │   │   ├── errors.go
+    │   │   ├── handlers.go
+    │   │   └── router.go
+    │   ├── service
+    │   │   ├── loyalty.go
+    │   │   └── loyalty_test.go
+    │   └── storage
+    │       ├── certs
+    │       │   └── global-bundle.pem
+    │       ├── mysql.go
+    │       └── repo.go
+    └── main.go
 ```
 ---
 
