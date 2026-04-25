@@ -52,4 +52,4 @@ jobs:
           aws-region: eu-west-1
 
       - name: Deploy to staging
-        run: sam deploy --config-env staging
+        run: sam deploy --config-env staging --no-confirm-changeset --no-fail-on-empty-changeset
