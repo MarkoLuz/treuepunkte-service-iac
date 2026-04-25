@@ -12,7 +12,7 @@ services:
       - "3306:3306"
     volumes:
       - treuepunkte_db_data:/var/lib/mysql
-      - ./sql/init:/docker-entrypoint-initdb.d:ro
+      - ./sql/schema:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -p$$MARIADB_ROOT_PASSWORD --silent"]
       interval: 5s

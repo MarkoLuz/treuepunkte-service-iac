@@ -20,3 +20,6 @@ awscliv2.zip
 
 # IDE
 .vscode/
+
+# Generated (schema-init build artifact)
+schema-init/sql/001_schema.sql

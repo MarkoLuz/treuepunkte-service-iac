@@ -1,7 +1,7 @@
 .PHONY: help
 .PHONY: up down docker-build logs restart clean
 .PHONY: test test-unit test-integration
-.PHONY: build validate deploy-staging deploy-production
+.PHONY: build validate deploy-staging deploy-production prepare-schema-init
 .PHONY: sam-build sam-validate sam-deploy-staging sam-deploy-production
 
 # =========================
@@ -72,20 +72,28 @@ test-integration:
 	cd treuepunkte-function && go test ./integrationtests/...
 
 # =========================
+# SCHEMA PREP
+# =========================
+
+prepare-schema-init:
+	mkdir -p schema-init/sql
+	cp sql/schema/001_schema.sql schema-init/sql/001_schema.sql
+
+# =========================
 # SAM (AWS) COMMANDS
 # =========================
 
-build:
+build: prepare-schema-init
 	sam build
 
 validate:
 	sam validate
 
-deploy-staging:
+deploy-staging: prepare-schema-init
 	sam build
 	sam deploy --config-env staging
 
-deploy-production:
+deploy-production: prepare-schema-init
 	sam build
 	sam deploy --config-env production
 
