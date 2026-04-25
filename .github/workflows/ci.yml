@@ -7,6 +7,16 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      deploy_production:
+        description: 'Deploy to production?'
+        required: true
+        default: 'no'
+        type: choice
+        options:
+          - 'no'
+          - 'yes'
 
 jobs:
   ci:
@@ -36,6 +46,7 @@ jobs:
   deploy-staging:
     runs-on: ubuntu-latest
     needs: ci
+    if: github.event_name == 'push'
 
     steps:
       - name: Checkout repository
@@ -53,3 +64,25 @@ jobs:
 
       - name: Deploy to staging
         run: sam deploy --config-env staging --no-confirm-changeset --no-fail-on-empty-changeset
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: ci
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_production == 'yes'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-1
+
+      - name: Deploy to production
+        run: sam deploy --config-env production --no-confirm-changeset --no-fail-on-empty-changeset
