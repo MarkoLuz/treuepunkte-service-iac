@@ -85,14 +85,14 @@ Repeated requests with the same key do not create duplicate transactions.
 
 ## Features
 
-- Accrue points (`accrue`)
-- Confirm points (`confirm`)
-- Revoke points (`revoke`)
-- Redeem points (`redeem`)
-- Restore points (`restore`)
-- Retrieve customer balance
-- Retrieve transaction history
-- Health check endpoint
+- accrue points (`accrue`)
+- confirm points (`confirm`)
+- revoke points (`revoke`)
+- redeem points (`redeem`)
+- restore points (`restore`)
+- retrieve customer balance
+- retrieve transaction history
+- health check endpoint
 
 ---
 
@@ -259,11 +259,11 @@ The pipeline ensures that every code change is automatically tested, validated, 
 
 On every push to the main branch and on every pull request, the following steps are executed:
 
-- Checkout repository
-- Set up Go environment
-- Run unit and integration tests (`make test`)
-- Validate the SAM template (`make validate`)
-- Build the application (`make build`)
+- checkout repository
+- set up Go environment
+- run unit and integration tests (`make test`)
+- validate the SAM template (`make validate`)
+- build the application (`make build`)
 
 This guarantees that only working and valid code proceeds to deployment.
 
@@ -276,6 +276,8 @@ After a successful CI run, the application is automatically deployed to the stag
 **Deployment:** `sam deploy --config-env staging`
 
 This allows immediate testing of changes in a cloud environment without manual intervention.
+
+This ensures fast feedback and early detection of issues.
 
 ### Continuous Deployment – Production
 
@@ -291,7 +293,7 @@ This prevents accidental deployments and follows best practices for controlled r
 
 ### Security
 
-AWS credentials are not stored in the codebase.
+AWS credentials are not stored in the codebase and are managed securely.
 They are securely managed using GitHub repository secrets:
 
 - `AWS_ACCESS_KEY_ID`
@@ -306,6 +308,30 @@ The pipeline follows a standard and production-ready workflow:
 - Manual, controlled deployment to production
 
 This setup ensures reliability, reproducibility, and alignment with Infrastructure-as-Code principles.
+
+### Verification and Result
+
+Based on the execution of GitHub Actions workflows, the following has been verified:
+
+- all CI steps complete successfully
+- staging deployment is automatically triggered on every push
+- production deployment can be successfully triggered manually via `workflow_dispatch`
+- multiple consecutive runs confirm the stability of the pipeline
+
+**Visual confirmation:**
+
+- all relevant workflow runs are marked as successful (green)
+- the initial failed attempt (Add staging deploy) was identified and successfully resolved
+
+### Final Result
+
+A complete CI/CD pipeline has been implemented, including:
+
+- Automated integration (CI)
+- Automatic deployment to staging
+- Manual, controlled deployment to production
+
+The pipeline is functional, stable, and built using standard tools (GitHub Actions and AWS SAM), making it suitable for real-world production scenarios.
 
 ---
 
@@ -403,5 +429,3 @@ These limitations are known and do not affect the correctness of the system, but
 - Improve test coverage
 - Add structured logging and monitoring
 - Add secret rotation via AWS Secrets Manager
-
-
