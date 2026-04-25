@@ -30,6 +30,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.22.x'
+          cache-dependency-path: treuepunkte-function/go.sum
 
       - name: Set up AWS SAM CLI
         uses: aws-actions/setup-sam@v2
