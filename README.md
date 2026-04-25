@@ -119,46 +119,60 @@ Repeated requests with the same key do not create duplicate transactions.
 ├── README_IHK.md
 ├── docker-compose.yml
 ├── events
-│   └── event.json
+│   └── event.json
 ├── openapi.yaml
 ├── samconfig.toml
 ├── schema-init
-│   ├── go.mod
-│   ├── go.sum
-│   ├── main.go
-│   └── sql
-│       └── 001_schema.sql
+│   ├── go.mod
+│   ├── go.sum
+│   ├── main.go
+│   └── sql
+│       └── 001_schema.sql   # generated at build time (not versioned)
 ├── sql
-│   └── init
-│       └── 001_schema.sql
+│   └── schema
+│       └── 001_schema.sql   # canonical database schema
 ├── template.yaml
 └── treuepunkte-function
     ├── go.mod
     ├── go.sum
     ├── integrationtests
-    │   └── aws_integration_test.go
+    │   └── aws_integration_test.go
     ├── internal
-    │   ├── config
-    │   │   └── config.go
-    │   ├── domain
-    │   │   ├── errors.go
-    │   │   ├── models.go
-    │   │   └── rules.go
-    │   ├── http
-    │   │   ├── dto.go
-    │   │   ├── errors.go
-    │   │   ├── handlers.go
-    │   │   └── router.go
-    │   ├── service
-    │   │   ├── loyalty.go
-    │   │   └── loyalty_test.go
-    │   └── storage
-    │       ├── certs
-    │       │   └── global-bundle.pem
-    │       ├── mysql.go
-    │       └── repo.go
+    │   ├── config
+    │   │   └── config.go
+    │   ├── domain
+    │   │   ├── errors.go
+    │   │   ├── models.go
+    │   │   └── rules.go
+    │   ├── http
+    │   │   ├── dto.go
+    │   │   ├── errors.go
+    │   │   ├── handlers.go
+    │   │   └── router.go
+    │   ├── service
+    │   │   ├── loyalty.go
+    │   │   └── loyalty_test.go
+    │   └── storage
+    │       ├── certs
+    │       │   └── global-bundle.pem
+    │       ├── mysql.go
+    │       └── repo.go
     └── main.go
 ```
+
+### Database Schema
+
+The database schema is defined in a single canonical file:
+
+- `sql/schema/001_schema.sql`
+
+For local development, this file is mounted into the MariaDB container and executed automatically.
+
+For AWS deployments, the schema is applied by a dedicated Lambda (`schema-init`).  
+Because Go's `embed` requires files to be present locally, the schema file is copied into `schema-init/sql/` during the build process.
+
+This file is a generated build artifact and is not version-controlled.
+
 ---
 
 ## Running the Project
