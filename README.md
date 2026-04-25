@@ -249,6 +249,66 @@ The deployment process uses AWS SAM and predefined configuration profiles.
 
 ---
 
+## CI/CD Pipeline
+
+This project uses a CI/CD pipeline implemented with GitHub Actions and AWS SAM.
+
+The pipeline ensures that every code change is automatically tested, validated, and deployed in a controlled way.
+
+### Continuous Integration (CI)
+
+On every push to the main branch and on every pull request, the following steps are executed:
+
+- Checkout repository
+- Set up Go environment
+- Run unit and integration tests (`make test`)
+- Validate the SAM template (`make validate`)
+- Build the application (`make build`)
+
+This guarantees that only working and valid code proceeds to deployment.
+
+### Continuous Deployment – Staging
+
+After a successful CI run, the application is automatically deployed to the staging environment.
+
+**Trigger:** `git push → main`
+
+**Deployment:** `sam deploy --config-env staging`
+
+This allows immediate testing of changes in a cloud environment without manual intervention.
+
+### Continuous Deployment – Production
+
+Deployment to production is intentionally manual to ensure safety and control.
+
+**Trigger:** GitHub → Actions → CI/CD → Run workflow
+
+**Input:** `deploy_production = yes`
+
+**Deployment:** `sam deploy --config-env production`
+
+This prevents accidental deployments and follows best practices for controlled releases.
+
+### Security
+
+AWS credentials are not stored in the codebase.
+They are securely managed using GitHub repository secrets:
+
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+
+### Summary
+
+The pipeline follows a standard and production-ready workflow:
+
+- Automated testing and validation (CI)
+- Automatic deployment to staging
+- Manual, controlled deployment to production
+
+This setup ensures reliability, reproducibility, and alignment with Infrastructure-as-Code principles.
+
+---
+
 ## Database Initialization
 
 The database schema is initialized automatically, depending on the environment:
@@ -342,7 +402,6 @@ These limitations are known and do not affect the correctness of the system, but
 - Unify database schema source (single source of truth)
 - Improve test coverage
 - Add structured logging and monitoring
-- Implement CI/CD pipeline
 - Add secret rotation via AWS Secrets Manager
 
 
