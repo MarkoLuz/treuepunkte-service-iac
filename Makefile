@@ -84,17 +84,17 @@ prepare-schema-init:
 # =========================
 
 build: prepare-schema-init
-	sam build
+	CGO_ENABLED=0 sam build --no-cached
 
 validate: prepare-schema-init
 	sam validate
 
 deploy-staging: prepare-schema-init
-	sam build
+	CGO_ENABLED=0 sam build --no-cached
 	sam deploy --config-env staging
 
 deploy-production: prepare-schema-init
-	sam build
+	CGO_ENABLED=0 sam build --no-cached
 	sam deploy --config-env production
 
 # =========================
