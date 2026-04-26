@@ -86,7 +86,7 @@ prepare-schema-init:
 build: prepare-schema-init
 	sam build
 
-validate:
+validate: prepare-schema-init
 	sam validate
 
 deploy-staging: prepare-schema-init
