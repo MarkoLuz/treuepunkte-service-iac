@@ -289,7 +289,7 @@ Resources:
   TreuepunkteFunction:
     Type: AWS::Serverless::Function
     Metadata:
-      BuildMethod: go1.x
+      BuildMethod: makefile
     Properties:
       CodeUri: treuepunkte-function/
       Handler: bootstrap
