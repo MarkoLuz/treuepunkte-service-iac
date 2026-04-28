@@ -248,7 +248,7 @@ Resources:
   SchemaInitFunction:
     Type: AWS::Serverless::Function
     Metadata:
-      BuildMethod: go1.x
+      BuildMethod: makefile
     Properties:
       CodeUri: schema-init/
       Handler: bootstrap

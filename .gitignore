@@ -22,4 +22,5 @@ awscliv2.zip
 .vscode/
 
 # Generated (schema-init build artifact)
-schema-init/sql/001_schema.sql
+schema-init/001_schema.sql
+schema-init/bootstrap

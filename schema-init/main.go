@@ -35,7 +35,7 @@ type CfnResponse struct {
 	Data               map[string]interface{} `json:"Data,omitempty"`
 }
 
-//go:embed sql/001_schema.sql
+//go:embed 001_schema.sql
 var schemaSQL string
 
 func main() {

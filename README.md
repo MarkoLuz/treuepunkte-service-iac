@@ -26,19 +26,19 @@ The system is implemented as a layered backend service with a clear separation o
 
 ### Components
 
-- **AWS Lambda**  
+- AWS Lambda
   Executes the application logic.
 
-- **API Gateway (HTTP API)**  
+- API Gateway (HTTP API)
   Exposes REST endpoints and routes requests to Lambda.
 
-- **Amazon RDS (MariaDB)**  
+- Amazon RDS (MariaDB)
   Stores all transactional data and customer balances.
 
-- **AWS SAM**  
+- AWS SAM
   Defines and deploys infrastructure as code.
 
-- **Docker (local)**  
+- Docker (local)
   Provides a reproducible local development environment.
 
 ---
@@ -47,16 +47,16 @@ The system is implemented as a layered backend service with a clear separation o
 
 The application follows a layered architecture:
 
-- **HTTP Layer**  
+- HTTP Layer
   Handles routing, request parsing, and response formatting.
 
-- **Service Layer**  
+- Service Layer
   Contains business logic and enforces domain rules.
 
-- **Storage Layer**  
+- Storage Layer
   Manages database interaction.
 
-- **Domain Layer**  
+- Domain Layer
   Defines core models and business rules.
 
 ---
@@ -67,9 +67,9 @@ The system uses an **event-based ledger approach**.
 
 All operations are stored as immutable transactions in a ledger table. This ensures:
 
-- full traceability  
-- auditability  
-- no loss of historical data  
+- full traceability
+- auditability
+- no loss of historical data
 
 A separate `balances` table stores the current state for efficient reads.
 
@@ -123,14 +123,14 @@ Repeated requests with the same key do not create duplicate transactions.
 ├── openapi.yaml
 ├── samconfig.toml
 ├── schema-init
+│   ├── Makefile
+│   ├── bootstrap
 │   ├── go.mod
 │   ├── go.sum
-│   ├── main.go
-│   └── sql
-│       └── 001_schema.sql   # generated at build time (not versioned)
+│   └── main.go
 ├── sql
 │   └── schema
-│       └── 001_schema.sql   # canonical database schema
+│       └── 001_schema.sql
 ├── template.yaml
 └── treuepunkte-function
     ├── go.mod
@@ -160,18 +160,17 @@ Repeated requests with the same key do not create duplicate transactions.
     └── main.go
 ```
 
-### Database Schema
+---
 
-The database schema is defined in a single canonical file:
+## Database Schema
+
+The database schema is defined in:
 
 - `sql/schema/001_schema.sql`
 
 For local development, this file is mounted into the MariaDB container and executed automatically.
 
-For AWS deployments, the schema is applied by a dedicated Lambda (`schema-init`).  
-Because Go's `embed` requires files to be present locally, the schema file is copied into `schema-init/sql/` during the build process.
-
-This file is a generated build artifact and is not version-controlled.
+For AWS deployments, the schema is applied by a dedicated Lambda (`schema-init`).
 
 ---
 
@@ -189,23 +188,28 @@ This file is a generated build artifact and is not version-controlled.
 ### Local Development (Docker)
 
 Start the local environment:
+
 ```bash
 make up
 ```
 
 View logs:
+
 ```bash
 make logs
 ```
 
 Stop the environment:
+
 ```bash
 make down
 ```
 
 The application will be available at:
 
-`http://localhost:8080`
+```
+http://localhost:8080
+```
 
 ---
 
@@ -245,28 +249,11 @@ Deploy to production:
 make deploy-production
 ```
 
-The deployment process uses AWS SAM and predefined configuration profiles.
-
 ---
 
 ## Deploy & Run (from scratch)
 
-This project can be fully deployed from scratch using AWS SAM.
-
-### Prerequisites
-
-- AWS account
-- configured AWS CLI (`aws configure` or SSO)
-- AWS SAM CLI installed
-- Docker (optional, for local development)
-
 ### Deploy to staging
-
-```bash
-make deploy-staging
-```
-
-or
 
 ```bash
 sam deploy --config-env staging
@@ -274,14 +261,9 @@ sam deploy --config-env staging
 
 ### Get API endpoint
 
-After deployment, the API endpoint is printed in the output:
+After deployment, the API endpoint is printed in the output.
 
-```
-Outputs:
-  ApiUrl: https://<api-id>.execute-api.eu-west-1.amazonaws.com/
-```
-
-Set it as an environment variable (replace `<api-id>` with your actual value):
+Set it as an environment variable:
 
 ```bash
 export API_URL="https://<api-id>.execute-api.eu-west-1.amazonaws.com"
@@ -289,26 +271,13 @@ export API_URL="https://<api-id>.execute-api.eu-west-1.amazonaws.com"
 
 ### Test the service
 
-Health check:
-
 ```bash
 curl "$API_URL/health"
 ```
 
-Example request (create pending points):
+---
 
-```bash
-curl -X POST "$API_URL/v1/points/accrue" \
-  -H "Content-Type: application/json" \
-  -H "Idempotency-Key: test-1" \
-  -d '{
-    "customer_id": "demo-user",
-    "order_id": "order-1",
-    "points": 100
-  }'
-```
-
-### Cleanup
+## Cleanup
 
 To remove all AWS resources (staging):
 
@@ -317,126 +286,56 @@ aws cloudformation delete-stack \
   --stack-name treuepunkte-iac-staging
 ```
 
-### Reproducibility
-
-The entire infrastructure (Lambda, API Gateway, RDS, networking, and schema initialization) is defined using Infrastructure-as-Code.
-
-This means the system can be deleted and recreated at any time using the same deployment process without manual setup.
-
 ---
 
 ## CI/CD Pipeline
 
-This project uses a CI/CD pipeline implemented with GitHub Actions and AWS SAM.
-
-The pipeline ensures that every code change is automatically tested, validated, and deployed in a controlled way.
+This project uses GitHub Actions for CI/CD.
 
 ### Continuous Integration (CI)
 
-On every push to the main branch and on every pull request, the following steps are executed:
+On every push to the main branch and on every pull request:
 
-- checkout repository
-- set up Go environment
-- run unit and integration tests (`make test`)
-- validate the SAM template (`make validate`)
-- build the application (`make build`)
-
-This guarantees that only working and valid code proceeds to deployment.
+- run tests (`make test`)
+- validate SAM template (`make validate`)
+- build application (`make build`)
 
 ### Continuous Deployment – Staging
 
-After a successful CI run, the application is automatically deployed to the staging environment.
+Automatic deployment on push to main:
 
-**Trigger:** `git push → main`
-
-**Deployment:** `sam deploy --config-env staging`
-
-This allows immediate testing of changes in a cloud environment without manual intervention.
-
-This ensures fast feedback and early detection of issues.
+```bash
+sam deploy --config-env staging
+```
 
 ### Continuous Deployment – Production
 
-Deployment to production is intentionally manual to ensure safety and control.
-
-**Trigger:** GitHub → Actions → CI/CD → Run workflow
-
-**Input:** `deploy_production = yes`
-
-**Deployment:** `sam deploy --config-env production`
-
-This prevents accidental deployments and follows best practices for controlled releases.
-
-### Security
-
-AWS credentials are not stored in the codebase and are managed securely.
-They are securely managed using GitHub repository secrets:
-
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
-
-### Summary
-
-The pipeline follows a standard and production-ready workflow:
-
-- Automated testing and validation (CI)
-- Automatic deployment to staging
-- Manual, controlled deployment to production
-
-This setup ensures reliability, reproducibility, and alignment with Infrastructure-as-Code principles.
-
-### Verification and Result
-
-Based on the execution of GitHub Actions workflows, the following has been verified:
-
-- all CI steps complete successfully
-- staging deployment is automatically triggered on every push
-- production deployment can be successfully triggered manually via `workflow_dispatch`
-- multiple consecutive runs confirm the stability of the pipeline
-
-**Visual confirmation:**
-
-- all relevant workflow runs are marked as successful (green)
-- the initial failed attempt (Add staging deploy) was identified and successfully resolved
-
-### Final Result
-
-A complete CI/CD pipeline has been implemented, including:
-
-- Automated integration (CI)
-- Automatic deployment to staging
-- Manual, controlled deployment to production
-
-The pipeline is functional, stable, and built using standard tools (GitHub Actions and AWS SAM), making it suitable for real-world production scenarios.
+Manual deployment via GitHub Actions.
 
 ---
 
 ## Database Initialization
 
-The database schema is initialized automatically, depending on the environment:
+**Local (Docker)**
+MariaDB executes SQL scripts from `sql/schema/`.
 
-**Local (Docker)**  
-MariaDB executes SQL scripts from `sql/init/` via `docker-entrypoint-initdb.d`.
-
-**AWS**  
-A dedicated Lambda function (`schema-init`) initializes the schema during deployment using a CloudFormation custom resource.
-
-This ensures that the required tables are created automatically in both environments.
+**AWS**
+A dedicated Lambda (`schema-init`) initializes the schema during deployment.
 
 ---
 
 ## API Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/health` | Health check |
-| POST | `/v1/points/accrue` | Create pending points |
-| POST | `/v1/points/confirm` | Confirm points |
-| POST | `/v1/points/revoke` | Revoke points |
-| POST | `/v1/points/redeem` | Redeem points |
-| POST | `/v1/points/restore` | Restore points |
-| GET | `/v1/customers/{id}/balance` | Get current balance |
-| GET | `/v1/customers/{id}/transactions` | Get transaction history |
+| Method | Endpoint                          | Description             |
+| ------ | --------------------------------- | ----------------------- |
+| GET    | `/health`                         | Health check            |
+| POST   | `/v1/points/accrue`               | Create pending points   |
+| POST   | `/v1/points/confirm`              | Confirm points          |
+| POST   | `/v1/points/revoke`               | Revoke points           |
+| POST   | `/v1/points/redeem`               | Redeem points           |
+| POST   | `/v1/points/restore`              | Restore points          |
+| GET    | `/v1/customers/{id}/balance`      | Get current balance     |
+| GET    | `/v1/customers/{id}/transactions` | Get transaction history |
 
 ---
 
@@ -464,44 +363,30 @@ DB_PASS=treuepunkte
 DB_NAME=treuepunkte
 ```
 
-These values are for development only.
-
 ### AWS Environment
 
-- Database credentials are stored in AWS Secrets Manager
-- Password is injected via CloudFormation dynamic reference
-- No secrets are stored in the repository
+- credentials stored in AWS Secrets Manager
+- injected via CloudFormation
+- no secrets in the repository
 
 ---
 
 ## Testing Strategy
 
-The project includes:
-
 - Unit tests (service layer)
 - Integration tests (API + database interaction)
-- Manual end-to-end tests (via HTTP requests)
-
-Test scenarios include:
-
-- full transaction flows
-- error handling
-- idempotency behavior
+- Manual end-to-end tests
 
 ---
 
 ## Notes / Limitations
 
-- Local and AWS database configurations use slightly different naming conventions
-- Database schema is currently duplicated for Docker and AWS initialization
-
-These limitations are known and do not affect the correctness of the system, but are candidates for future refactoring.
+- Test coverage is focused on core functionality
 
 ---
 
 ## Future Improvements
 
-- Unify database schema source (single source of truth)
 - Improve test coverage
 - Add structured logging and monitoring
-- Add secret rotation via AWS Secrets Manager
+- Implement secret rotation
