@@ -24,3 +24,4 @@ awscliv2.zip
 # Generated (schema-init build artifact)
 schema-init/001_schema.sql
 schema-init/bootstrap
+schema-init/sql/
