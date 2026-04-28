@@ -249,6 +249,82 @@ The deployment process uses AWS SAM and predefined configuration profiles.
 
 ---
 
+## Deploy & Run (from scratch)
+
+This project can be fully deployed from scratch using AWS SAM.
+
+### Prerequisites
+
+- AWS account
+- configured AWS CLI (`aws configure` or SSO)
+- AWS SAM CLI installed
+- Docker (optional, for local development)
+
+### Deploy to staging
+
+```bash
+make deploy-staging
+```
+
+or
+
+```bash
+sam deploy --config-env staging
+```
+
+### Get API endpoint
+
+After deployment, the API endpoint is printed in the output:
+
+```
+Outputs:
+  ApiUrl: https://<api-id>.execute-api.eu-west-1.amazonaws.com/
+```
+
+Set it as an environment variable (replace `<api-id>` with your actual value):
+
+```bash
+export API_URL="https://<api-id>.execute-api.eu-west-1.amazonaws.com"
+```
+
+### Test the service
+
+Health check:
+
+```bash
+curl "$API_URL/health"
+```
+
+Example request (create pending points):
+
+```bash
+curl -X POST "$API_URL/v1/points/accrue" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: test-1" \
+  -d '{
+    "customer_id": "demo-user",
+    "order_id": "order-1",
+    "points": 100
+  }'
+```
+
+### Cleanup
+
+To remove all AWS resources (staging):
+
+```bash
+aws cloudformation delete-stack \
+  --stack-name treuepunkte-iac-staging
+```
+
+### Reproducibility
+
+The entire infrastructure (Lambda, API Gateway, RDS, networking, and schema initialization) is defined using Infrastructure-as-Code.
+
+This means the system can be deleted and recreated at any time using the same deployment process without manual setup.
+
+---
+
 ## CI/CD Pipeline
 
 This project uses a CI/CD pipeline implemented with GitHub Actions and AWS SAM.
