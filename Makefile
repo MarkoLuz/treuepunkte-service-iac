@@ -1,8 +1,9 @@
 .PHONY: help
 .PHONY: up down docker-build logs restart clean
 .PHONY: test test-unit test-integration
-.PHONY: build validate deploy-staging deploy-production prepare-schema-init
+.PHONY: build validate deploy-staging deploy-production
 .PHONY: sam-build sam-validate sam-deploy-staging sam-deploy-production
+.PHONY: build-SchemaInitFunction
 
 # =========================
 # HELP
@@ -72,28 +73,33 @@ test-integration:
 	cd treuepunkte-function && go test ./integrationtests/...
 
 # =========================
-# SCHEMA PREP
+# SAM CUSTOM BUILD TARGETS
 # =========================
 
-prepare-schema-init:
-	mkdir -p schema-init/sql
-	cp sql/schema/001_schema.sql schema-init/sql/001_schema.sql
+build-SchemaInitFunction:
+	@set -e; \
+	cp sql/schema/001_schema.sql schema-init/001_schema.sql; \
+	trap 'rm -f schema-init/001_schema.sql schema-init/bootstrap' EXIT; \
+	( cd schema-init && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bootstrap main.go ); \
+	chmod +x schema-init/bootstrap; \
+	mkdir -p $(ARTIFACTS_DIR); \
+	cp schema-init/bootstrap $(ARTIFACTS_DIR)/bootstrap
 
 # =========================
 # SAM (AWS) COMMANDS
 # =========================
 
-build: prepare-schema-init
+build:
 	CGO_ENABLED=0 sam build --no-cached
 
-validate: prepare-schema-init
+validate:
 	sam validate
 
-deploy-staging: prepare-schema-init
+deploy-staging:
 	CGO_ENABLED=0 sam build --no-cached
 	sam deploy --config-env staging
 
-deploy-production: prepare-schema-init
+deploy-production:
 	CGO_ENABLED=0 sam build --no-cached
 	sam deploy --config-env production
 

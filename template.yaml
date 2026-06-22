@@ -250,7 +250,7 @@ Resources:
     Metadata:
       BuildMethod: makefile
     Properties:
-      CodeUri: schema-init/
+      CodeUri: .
       Handler: bootstrap
       Runtime: provided.al2023
       Architectures:
