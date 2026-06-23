@@ -32,13 +32,10 @@ paths:
         '200':
           description: Service is healthy
           content:
-            application/json:
+            text/plain:
               schema:
-                $ref: '#/components/schemas/HealthResponse'
-              examples:
-                ok:
-                  value:
-                    status: ok
+                type: string
+                example: ok
 
   /v1/points/accrue:
     post:
@@ -72,16 +69,6 @@ paths:
                 created:
                   value:
                     status: created
-        '200':
-          description: Idempotent repeat request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StatusResponse'
-              examples:
-                ok:
-                  value:
-                    status: ok
         '400':
           $ref: '#/components/responses/BadRequest'
         '409':
@@ -120,16 +107,6 @@ paths:
                 created:
                   value:
                     status: created
-        '200':
-          description: Idempotent repeat request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StatusResponse'
-              examples:
-                ok:
-                  value:
-                    status: ok
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -171,16 +148,6 @@ paths:
                 created:
                   value:
                     status: created
-        '200':
-          description: Idempotent repeat request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StatusResponse'
-              examples:
-                ok:
-                  value:
-                    status: ok
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -222,16 +189,6 @@ paths:
                 created:
                   value:
                     status: created
-        '200':
-          description: Idempotent repeat request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StatusResponse'
-              examples:
-                ok:
-                  value:
-                    status: ok
         '400':
           $ref: '#/components/responses/BadRequest'
         '409':
@@ -270,16 +227,6 @@ paths:
                 created:
                   value:
                     status: created
-        '200':
-          description: Idempotent repeat request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StatusResponse'
-              examples:
-                ok:
-                  value:
-                    status: ok
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -372,7 +319,7 @@ components:
       name: Idempotency-Key
       in: header
       required: false
-      description: Optional idempotency key header
+      description: Optional idempotency key header. Used when idempotency_key is not provided in the JSON body. The current implementation uses this key for duplicate protection; repeated or conflicting requests return 409 Conflict and are not replayed as 200 OK responses.
       schema:
         type: string
 
@@ -422,15 +369,6 @@ components:
                 error: internal server error
 
   schemas:
-    HealthResponse:
-      type: object
-      properties:
-        status:
-          type: string
-          example: ok
-      required:
-        - status
-
     StatusResponse:
       type: object
       properties:
@@ -438,7 +376,6 @@ components:
           type: string
           enum:
             - created
-            - ok
       required:
         - status
 
@@ -564,6 +501,7 @@ components:
           type: integer
         occurred_at:
           type: string
+          format: date-time
       required:
         - id
         - customer_id
