@@ -9,7 +9,7 @@ import (
 )
 
 type Store interface {
-    RedeemPoints(ctx context.Context, customerID, reference string, points int, idemKey string) (bool, error)
+	RedeemPoints(ctx context.Context, customerID, reference string, points int, idemKey string) (bool, error)
 }
 
 type Repository struct {
@@ -116,6 +116,22 @@ func (r *Repository) ConfirmAccrue(ctx context.Context, customerID, orderID, ide
 
 	if status != "pending" {
 		return false, domain.ErrTransactionNotPending
+	}
+
+	var revokeExists int
+	err = tx.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM points_ledger
+		WHERE customer_id = ?
+		  AND order_id = ?
+		  AND kind = 'revoke'
+	`, customerID, orderID).Scan(&revokeExists)
+	if err != nil {
+		return false, err
+	}
+
+	if revokeExists > 0 {
+		return false, domain.ErrConflict
 	}
 
 	_, err = tx.ExecContext(ctx, `
