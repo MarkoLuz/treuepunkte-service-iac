@@ -25,7 +25,18 @@ func isMySQLDuplicate(err error) bool {
 	return errors.As(err, &mysqlErr) && mysqlErr.Number == 1062
 }
 
-func (r *Repository) AccruePoints(ctx context.Context, customerID, orderID string, points int, idemKey string) (bool, error) {
+func (r *Repository) AccruePoints(
+	ctx context.Context,
+	customerID string,
+	orderID string,
+	points int,
+	home24MerchCents int,
+	miraklMerchCents int,
+	orderTotalCents int,
+	shippingCents int,
+	currency string,
+	idemKey string,
+) (bool, error) {
 	tx, err := r.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return false, err
@@ -56,14 +67,24 @@ func (r *Repository) AccruePoints(ctx context.Context, customerID, orderID strin
 			kind,
 			status,
 			points,
+			home24_merch_cents,
+			mirakl_merch_cents,
+			order_total_cents,
+			shipping_cents,
+			currency,
 			idempotency_key
-		) VALUES (?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`,
 		customerID,
 		orderID,
 		"accrue",
 		"pending",
 		points,
+		home24MerchCents,
+		miraklMerchCents,
+		orderTotalCents,
+		shippingCents,
+		currency,
 		nullIfEmpty(idemKey),
 	)
 	if err != nil {
@@ -452,7 +473,21 @@ func (r *Repository) GetBalance(ctx context.Context, customerID string) (domain.
 
 func (r *Repository) GetTransactions(ctx context.Context, customerID string) ([]domain.Transaction, error) {
 	rows, err := r.DB.QueryContext(ctx, `
-		SELECT id, customer_id, order_id, reference, return_id, kind, status, points, occurred_at
+		SELECT
+			id,
+			customer_id,
+			order_id,
+			reference,
+			return_id,
+			kind,
+			status,
+			points,
+			home24_merch_cents,
+			mirakl_merch_cents,
+			order_total_cents,
+			shipping_cents,
+			currency,
+			occurred_at
 		FROM points_ledger
 		WHERE customer_id = ?
 		ORDER BY id ASC
@@ -476,6 +511,11 @@ func (r *Repository) GetTransactions(ctx context.Context, customerID string) ([]
 			&tx.Kind,
 			&tx.Status,
 			&tx.Points,
+			&tx.Home24MerchCents,
+			&tx.MiraklMerchCents,
+			&tx.OrderTotalCents,
+			&tx.ShippingCents,
+			&tx.Currency,
 			&tx.OccurredAt,
 		)
 		if err != nil {

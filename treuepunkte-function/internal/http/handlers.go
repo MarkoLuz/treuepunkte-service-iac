@@ -28,7 +28,15 @@ func (h *Handlers) PostAccrue(w http.ResponseWriter, r *http.Request) {
 
 	idemKey := resolveIdempotencyKey(r, in.IdempotencyKey)
 
-	created, err := h.Loyalty.Accrue(r.Context(), in.CustomerID, in.OrderID, in.Points, idemKey)
+	created, err := h.Loyalty.Accrue(r.Context(), service.AccrueInput{
+		CustomerID:       in.CustomerID,
+		OrderID:          in.OrderID,
+		Home24MerchCents: in.Home24MerchCents,
+		MiraklMerchCents: in.MiraklMerchCents,
+		ShippingCents:    in.ShippingCents,
+		Currency:         in.Currency,
+		IdempotencyKey:   idemKey,
+	})
 	if err != nil {
 		writeMappedError(w, err)
 		return
@@ -154,15 +162,20 @@ func (h *Handlers) GetTransactions(w http.ResponseWriter, r *http.Request, custo
 	resp := make([]TransactionResponse, 0, len(transactions))
 	for _, tx := range transactions {
 		resp = append(resp, TransactionResponse{
-			ID:         tx.ID,
-			CustomerID: tx.CustomerID,
-			OrderID:    stringPtrFromNullString(tx.OrderID),
-			Reference:  stringPtrFromNullString(tx.Reference),
-			ReturnID:   stringPtrFromNullString(tx.ReturnID),
-			Kind:       string(tx.Kind),
-			Status:     string(tx.Status),
-			Points:     tx.Points,
-			OccurredAt: tx.OccurredAt.Format(time.RFC3339),
+			ID:               tx.ID,
+			CustomerID:       tx.CustomerID,
+			OrderID:          stringPtrFromNullString(tx.OrderID),
+			Reference:        stringPtrFromNullString(tx.Reference),
+			ReturnID:         stringPtrFromNullString(tx.ReturnID),
+			Kind:             string(tx.Kind),
+			Status:           string(tx.Status),
+			Points:           tx.Points,
+			Home24MerchCents: int64PtrFromNullInt64(tx.Home24MerchCents),
+			MiraklMerchCents: int64PtrFromNullInt64(tx.MiraklMerchCents),
+			OrderTotalCents:  int64PtrFromNullInt64(tx.OrderTotalCents),
+			ShippingCents:    int64PtrFromNullInt64(tx.ShippingCents),
+			Currency:         stringPtrFromNullString(tx.Currency),
+			OccurredAt:       tx.OccurredAt.Format(time.RFC3339),
 		})
 	}
 

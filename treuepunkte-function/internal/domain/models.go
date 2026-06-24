@@ -28,13 +28,18 @@ type Balance struct {
 }
 
 type Transaction struct {
-	ID         uint64
-	CustomerID string
-	OrderID    sql.NullString
-	Reference  sql.NullString
-	ReturnID   sql.NullString
-	Kind       LedgerKind
-	Status     LedgerStatus
-	Points     int
-	OccurredAt time.Time
+	ID                uint64
+	CustomerID        string
+	OrderID           sql.NullString
+	Reference         sql.NullString
+	ReturnID          sql.NullString
+	Kind              LedgerKind
+	Status            LedgerStatus
+	Points            int
+	Home24MerchCents  sql.NullInt64
+	MiraklMerchCents  sql.NullInt64
+	OrderTotalCents   sql.NullInt64
+	ShippingCents     sql.NullInt64
+	Currency          sql.NullString
+	OccurredAt        time.Time
 }

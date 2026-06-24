@@ -56,7 +56,10 @@ paths:
                 value:
                   customer_id: cust-1
                   order_id: order-1001
-                  points: 120
+                  home24_merch_cents: 1200
+                  mirakl_merch_cents: 1000
+                  shipping_cents: 490
+                  currency: EUR
                   idempotency_key: accrue-1001
       responses:
         '201':
@@ -313,7 +316,12 @@ paths:
                       return_id: null
                       kind: accrue
                       status: pending
-                      points: 120
+                      points: 170
+                      home24_merch_cents: 1200
+                      mirakl_merch_cents: 1000
+                      order_total_cents: 2200
+                      shipping_cents: 490
+                      currency: EUR
                       occurred_at: "2026-04-16T18:00:00Z"
                     - id: 2
                       customer_id: cust-1
@@ -322,7 +330,12 @@ paths:
                       return_id: null
                       kind: confirm
                       status: active
-                      points: 120
+                      points: 170
+                      home24_merch_cents: null
+                      mirakl_merch_cents: null
+                      order_total_cents: null
+                      shipping_cents: null
+                      currency: null
                       occurred_at: "2026-04-16T18:05:00Z"
                 empty:
                   value: []
@@ -413,19 +426,37 @@ components:
 
     AccrueRequest:
       type: object
+      description: Request for creating pending loyalty points from an order. Points are calculated by the service from the merchandise amounts. home24 merchandise earns 10 points per EUR, Mirakl/marketplace merchandise earns 5 points per EUR, shipping earns 0 points, and only EUR is accepted.
       properties:
         customer_id:
           type: string
         order_id:
           type: string
-        points:
+        home24_merch_cents:
           type: integer
+          minimum: 0
+          description: Merchandise amount in cents for home24 items.
+        mirakl_merch_cents:
+          type: integer
+          minimum: 0
+          description: Merchandise amount in cents for Mirakl/marketplace items.
+        shipping_cents:
+          type: integer
+          minimum: 0
+          description: Shipping amount in cents. Shipping is stored for traceability but does not earn points.
+        currency:
+          type: string
+          enum:
+            - EUR
         idempotency_key:
           type: string
       required:
         - customer_id
         - order_id
-        - points
+        - home24_merch_cents
+        - mirakl_merch_cents
+        - shipping_cents
+        - currency
 
     ConfirmRequest:
       type: object
@@ -534,6 +565,26 @@ components:
             - active
         points:
           type: integer
+        home24_merch_cents:
+          type: integer
+          nullable: true
+          description: Merchandise amount in cents for home24 items. Present for accrue entries.
+        mirakl_merch_cents:
+          type: integer
+          nullable: true
+          description: Merchandise amount in cents for Mirakl/marketplace items. Present for accrue entries.
+        order_total_cents:
+          type: integer
+          nullable: true
+          description: Sum of home24_merch_cents and mirakl_merch_cents. Shipping is not included.
+        shipping_cents:
+          type: integer
+          nullable: true
+          description: Shipping amount in cents. Shipping does not earn points.
+        currency:
+          type: string
+          nullable: true
+          description: Currency used for the order amount. Currently only EUR is accepted for accrual.
         occurred_at:
           type: string
           format: date-time
