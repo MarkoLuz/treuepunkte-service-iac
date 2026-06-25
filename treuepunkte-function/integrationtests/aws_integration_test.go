@@ -62,9 +62,12 @@ func TestAWSIntegration_AccrueConfirmBalance(t *testing.T) {
 
 	{
 		payload := map[string]any{
-			"customer_id": customerID,
-			"order_id":    orderID,
-			"points":      120,
+			"customer_id":        customerID,
+			"order_id":           orderID,
+			"home24_merch_cents": 1200,
+			"mirakl_merch_cents": 1000,
+			"shipping_cents":     490,
+			"currency":           "EUR",
 		}
 
 		resp, body := doRequest(t, client, http.MethodPost, baseURL+"/v1/points/accrue", "aws-it-accrue-"+fmt.Sprint(uniq), payload)
@@ -91,7 +94,7 @@ func TestAWSIntegration_AccrueConfirmBalance(t *testing.T) {
 		if bal.CustomerID != customerID {
 			t.Fatalf("unexpected customer_id after accrue: got %s want %s", bal.CustomerID, customerID)
 		}
-		if bal.ActivePoints != 0 || bal.PendingPoints != 120 {
+		if bal.ActivePoints != 0 || bal.PendingPoints != 170 {
 			t.Fatalf("unexpected balance after accrue: got active=%d pending=%d", bal.ActivePoints, bal.PendingPoints)
 		}
 	}
@@ -126,7 +129,7 @@ func TestAWSIntegration_AccrueConfirmBalance(t *testing.T) {
 		if bal.CustomerID != customerID {
 			t.Fatalf("unexpected customer_id after confirm: got %s want %s", bal.CustomerID, customerID)
 		}
-		if bal.ActivePoints != 120 || bal.PendingPoints != 0 {
+		if bal.ActivePoints != 170 || bal.PendingPoints != 0 {
 			t.Fatalf("unexpected balance after confirm: got active=%d pending=%d", bal.ActivePoints, bal.PendingPoints)
 		}
 	}
@@ -148,10 +151,10 @@ func TestAWSIntegration_AccrueConfirmBalance(t *testing.T) {
 			t.Fatalf("expected 2 transactions, got %d, body=%s", len(txs), body)
 		}
 
-		if txs[0].Kind != "accrue" || txs[0].Status != "pending" || txs[0].Points != 120 {
+		if txs[0].Kind != "accrue" || txs[0].Status != "pending" || txs[0].Points != 170 {
 			t.Fatalf("unexpected first transaction: %+v", txs[0])
 		}
-		if txs[1].Kind != "confirm" || txs[1].Status != "active" || txs[1].Points != 120 {
+		if txs[1].Kind != "confirm" || txs[1].Status != "active" || txs[1].Points != 170 {
 			t.Fatalf("unexpected second transaction: %+v", txs[1])
 		}
 	}
