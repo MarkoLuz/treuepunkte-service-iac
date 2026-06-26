@@ -184,6 +184,18 @@ Resources:
       SubnetId: !Ref PrivateSubnet2
       RouteTableId: !Ref PrivateRouteTable
 
+  S3VpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcEndpointType: Gateway
+      VpcId: !Ref TreuepunkteVPC
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.s3
+      RouteTableIds:
+        - !Ref PrivateRouteTable
+      Tags:
+        - Key: Name
+          Value: !Sub treuepunkte-s3-vpce-${AppEnv}
+
   LambdaSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -284,6 +296,7 @@ Resources:
       - PrivateDefaultRoute
       - PrivateSubnet1RouteTableAssociation
       - PrivateSubnet2RouteTableAssociation
+      - S3VpcEndpoint
     Properties:
       ServiceToken: !GetAtt SchemaInitFunction.Arn
       DbHost: !GetAtt TreuepunkteDatabase.Endpoint.Address
