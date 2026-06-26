@@ -280,6 +280,10 @@ Resources:
 
   SchemaInitCustomResource:
     Type: Custom::SchemaInit
+    DependsOn:
+      - PrivateDefaultRoute
+      - PrivateSubnet1RouteTableAssociation
+      - PrivateSubnet2RouteTableAssociation
     Properties:
       ServiceToken: !GetAtt SchemaInitFunction.Arn
       DbHost: !GetAtt TreuepunkteDatabase.Endpoint.Address
