@@ -9,8 +9,17 @@ on:
       - main
   workflow_dispatch:
     inputs:
-      deploy_production:
-        description: 'Deploy to production?'
+      deploy_target:
+        description: 'Deployment target'
+        required: true
+        default: 'none'
+        type: choice
+        options:
+          - 'none'
+          - 'staging'
+          - 'production'
+      confirm_production:
+        description: 'Confirm production deployment'
         required: true
         default: 'no'
         type: choice
@@ -50,7 +59,7 @@ jobs:
   deploy-staging:
     runs-on: ubuntu-latest
     needs: ci
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_production == 'no'
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_target == 'staging'
     environment: staging
 
     steps:
@@ -82,7 +91,7 @@ jobs:
   deploy-production:
     runs-on: ubuntu-latest
     needs: ci
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_production == 'yes'
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_target == 'production' && github.event.inputs.confirm_production == 'yes'
     environment: production
 
     steps:
