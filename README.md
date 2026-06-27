@@ -1,12 +1,5 @@
 # Treuepunkte Service
 
-## IHK Version
-
-This repository also includes a version of the README adapted for IHK project requirements.
-
-See [README_IHK.md](./README_IHK.md)
-
----
 
 ## Overview
 
@@ -116,7 +109,6 @@ Repeated requests with the same key do not create duplicate transactions.
 ├── Dockerfile
 ├── Makefile
 ├── README.md
-├── README_IHK.md
 ├── docker-compose.yml
 ├── events
 │   └── event.json
