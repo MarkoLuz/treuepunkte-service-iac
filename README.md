@@ -282,7 +282,7 @@ aws cloudformation delete-stack \
 
 ## CI/CD Pipeline
 
-This project uses GitHub Actions for CI/CD.
+This project uses GitHub Actions for continuous integration and manual deployments.
 
 ### Continuous Integration (CI)
 
@@ -292,17 +292,13 @@ On every push to the main branch and on every pull request:
 - validate SAM template (`make validate`)
 - build application (`make build`)
 
-### Continuous Deployment – Staging
+### Manual Deployment – Staging
 
-Automatic deployment on push to main:
+Staging deployment is started manually via GitHub Actions by selecting the `staging` deploy target.
 
-```bash
-sam deploy --config-env staging
-```
+### Manual Deployment – Production
 
-### Continuous Deployment – Production
-
-Manual deployment via GitHub Actions.
+Production deployment is started manually via GitHub Actions by selecting the `production` deploy target and confirming the production deployment. The production environment is protected by a required reviewer.
 
 ---
 
