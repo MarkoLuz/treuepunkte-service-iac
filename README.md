@@ -1,219 +1,366 @@
 # Treuepunkte Service
 
+## Project background
 
-## Overview
+This project was developed in the context of my internship at home24.
 
-The Treuepunkte Service is a backend application for managing customer loyalty points in an e-commerce context.
+The business case is based on an e-commerce loyalty-points scenario with home24 merchandise and Mirakl/marketplace order items. The service calculates loyalty points from order amounts, stores the transaction history in a ledger table and maintains the current customer balance separately.
 
-The system processes events related to orders and manages the full lifecycle of loyalty points, including accrual, confirmation, redemption, revocation, and restoration.
+For the publicly documented and independently reproducible version of the project, internal company infrastructure is not used. Instead, the AWS deployment is implemented and validated in a private AWS account using an Infrastructure as Code approach.
 
-The application is implemented in Go and runs as a serverless service on AWS Lambda. Persistent data is stored in a MariaDB database (Amazon RDS in AWS, Docker-based MariaDB locally).
+This keeps the public project version clearly separated from internal company systems, while still demonstrating how the application can be deployed and validated in a real AWS environment.
 
-The project demonstrates a complete workflow from local development to cloud deployment using Infrastructure-as-Code (AWS SAM).
+---
+
+## What this project demonstrates
+
+This project is not a generic CRUD API. It focuses on a realistic loyalty-points lifecycle with transactional consistency between a ledger table and a current-balance table.
+
+Key parts:
+
+- Go backend service with HTTP API
+- loyalty lifecycle: accrue, confirm, revoke, redeem, restore
+- point calculation based on order amounts
+- ledger-based transaction history
+- current balance read model
+- idempotency and duplicate protection
+- MariaDB schema for local and AWS environments
+- local Docker Compose setup
+- AWS SAM infrastructure for Lambda, API Gateway, RDS and VPC networking
+- GitHub Actions CI with manual AWS deployments
+
+---
+
+## Business rules
+
+Points are calculated by the service during accrual. The client does not send the final number of points for an accrual request.
+
+Current accrual rules:
+
+| Order amount type                | Rule              |
+| -------------------------------- | ----------------- |
+| home24 merchandise               | 10 points per EUR |
+| Mirakl / marketplace merchandise | 5 points per EUR  |
+| Shipping                         | 0 points          |
+| Currency                         | EUR only          |
+
+Example:
+
+```text
+home24_merch_cents = 1200   -> 120 points
+mirakl_merch_cents = 1000   ->  50 points
+shipping_cents     =  490   ->   0 points
+
+calculated points = 170
+order_total_cents = 2200
+```
+
+`order_total_cents` contains only merchandise amounts:
+
+```text
+order_total_cents = home24_merch_cents + mirakl_merch_cents
+```
+
+Shipping is stored for traceability, but it does not earn points and is not included in `order_total_cents`.
+
+---
+
+## Loyalty lifecycle
+
+The service supports the following operations:
+
+| Operation | Purpose                                               |
+| --------- | ----------------------------------------------------- |
+| `accrue`  | Create pending points from an order                   |
+| `confirm` | Move previously accrued points from pending to active |
+| `revoke`  | Remove points when an order is returned               |
+| `redeem`  | Spend active points                                   |
+| `restore` | Restore previously redeemed points                    |
+
+The service models the waiting period through `pending` and `active` points. The automatic time-based trigger, for example after a return period, is intentionally outside the current scope and can be handled by an external scheduler or an existing company workflow.
+
+The lifecycle is stored in a ledger-style transaction history. Existing ledger entries are not overwritten when the lifecycle changes. Instead, follow-up actions are recorded as separate entries.
+
+For example, confirming an accrual does not update the original `accrue` row. It creates a separate `confirm` ledger entry and updates the customer balance.
 
 ---
 
 ## Architecture
 
-The system is implemented as a layered backend service with a clear separation of concerns.
-
-### Components
-
-- AWS Lambda
-  Executes the application logic.
-
-- API Gateway (HTTP API)
-  Exposes REST endpoints and routes requests to Lambda.
-
-- Amazon RDS (MariaDB)
-  Stores all transactional data and customer balances.
-
-- AWS SAM
-  Defines and deploys infrastructure as code.
-
-- Docker (local)
-  Provides a reproducible local development environment.
-
----
-
-### Internal Structure
-
-The application follows a layered architecture:
-
-- HTTP Layer
-  Handles routing, request parsing, and response formatting.
-
-- Service Layer
-  Contains business logic and enforces domain rules.
-
-- Storage Layer
-  Manages database interaction.
-
-- Domain Layer
-  Defines core models and business rules.
-
----
-
-### Data Model Concept
-
-The system uses an **event-based ledger approach**.
-
-All operations are stored as immutable transactions in a ledger table. This ensures:
-
-- full traceability
-- auditability
-- no loss of historical data
-
-A separate `balances` table stores the current state for efficient reads.
-
----
-
-### Idempotency
-
-To prevent duplicate processing, the system uses idempotency keys.
-
-Repeated requests with the same key do not create duplicate transactions.
-
----
-
-## Features
-
-- accrue points (`accrue`)
-- confirm points (`confirm`)
-- revoke points (`revoke`)
-- redeem points (`redeem`)
-- restore points (`restore`)
-- retrieve customer balance
-- retrieve transaction history
-- health check endpoint
-
----
-
-## Tech Stack
-
-- Go (Golang)
-- AWS Lambda (provided.al2023)
-- Amazon API Gateway (HTTP API)
-- Amazon RDS (MariaDB)
-- AWS SAM (Infrastructure-as-Code)
-- Docker / Docker Compose (local development)
-- Makefile (workflow automation)
-- Git & GitHub
-
----
-
-## Project Structure
+The application follows a layered backend structure.
 
 ```text
-.
-├── Dockerfile
-├── Makefile
-├── README.md
-├── docker-compose.yml
-├── events
-│   └── event.json
-├── openapi.yaml
-├── samconfig.toml
-├── schema-init
-│   ├── Makefile
-│   ├── bootstrap
-│   ├── go.mod
-│   ├── go.sum
-│   └── main.go
-├── sql
-│   └── schema
-│       └── 001_schema.sql
-├── template.yaml
-└── treuepunkte-function
-    ├── go.mod
-    ├── go.sum
-    ├── integrationtests
-    │   └── aws_integration_test.go
-    ├── internal
-    │   ├── config
-    │   │   └── config.go
-    │   ├── domain
-    │   │   ├── errors.go
-    │   │   ├── models.go
-    │   │   └── rules.go
-    │   ├── http
-    │   │   ├── dto.go
-    │   │   ├── errors.go
-    │   │   ├── handlers.go
-    │   │   └── router.go
-    │   ├── service
-    │   │   ├── loyalty.go
-    │   │   └── loyalty_test.go
-    │   └── storage
-    │       ├── certs
-    │       │   └── global-bundle.pem
-    │       ├── mysql.go
-    │       └── repo.go
-    └── main.go
+HTTP layer
+  - routes requests
+  - decodes JSON request bodies
+  - resolves idempotency keys from body or header
+  - maps domain errors to HTTP status codes
+  - formats JSON responses
+
+Service layer
+  - validates input
+  - enforces EUR-only accruals
+  - calculates points from order amounts
+  - orchestrates loyalty operations
+
+Repository / storage layer
+  - executes SQL queries
+  - wraps lifecycle operations in database transactions
+  - inserts ledger entries
+  - updates current balances
+  - handles duplicate/idempotency conflicts
+  - keeps ledger and balance changes consistent
+
+Domain layer
+  - defines shared domain models and errors
 ```
 
 ---
 
-## Database Schema
+## Data model
 
 The database schema is defined in:
 
-- `sql/schema/001_schema.sql`
+```text
+sql/schema/001_schema.sql
+```
 
-For local development, this file is mounted into the MariaDB container and executed automatically.
+Main tables:
 
-For AWS deployments, the schema is applied by a dedicated Lambda (`schema-init`).
+| Table           | Purpose                                        |
+| --------------- | ---------------------------------------------- |
+| `customers`     | Stores customer identifiers                    |
+| `balances`      | Stores current active and pending point totals |
+| `points_ledger` | Stores the loyalty transaction history         |
+
+### Ledger and balance model
+
+The `points_ledger` table is the historical source of truth for loyalty operations. It records entries such as:
+
+- `accrue`
+- `confirm`
+- `revoke`
+- `redeem`
+- `restore`
+
+The `balances` table is a read model for efficient balance queries:
+
+```text
+active_points
+pending_points
+```
+
+This avoids recalculating the current balance from the full ledger history on every balance request.
 
 ---
 
-## Running the Project
+## Idempotency and duplicate protection
+
+Write operations support idempotency keys.
+
+An idempotency key can be sent either:
+
+- in the JSON request body as `idempotency_key`
+- in the `Idempotency-Key` HTTP header
+
+If both are provided, the request body value is used.
+
+The database schema contains a unique constraint on `idempotency_key`. Additional unique constraints protect business references such as order IDs, redeem references and return IDs.
+
+Repeated or conflicting requests return `409 Conflict`; the current implementation does not replay the original response as `200 OK`.
+
+---
+
+## API endpoints
+
+| Method | Endpoint                                   | Description                                     |
+| ------ | ------------------------------------------ | ----------------------------------------------- |
+| `GET`  | `/health`                                  | Technical health check, returns plain text `ok` |
+| `POST` | `/v1/points/accrue`                        | Create pending points from order amounts        |
+| `POST` | `/v1/points/confirm`                       | Confirm previously accrued points               |
+| `POST` | `/v1/points/revoke`                        | Revoke points for a returned order              |
+| `POST` | `/v1/points/redeem`                        | Redeem active points                            |
+| `POST` | `/v1/points/restore`                       | Restore previously redeemed points              |
+| `GET`  | `/v1/customers/{customer_id}/balance`      | Get current customer balance                    |
+| `GET`  | `/v1/customers/{customer_id}/transactions` | Get customer transaction history                |
+
+The OpenAPI specification is available in:
+
+```text
+openapi.yaml
+```
+
+---
+
+## Example accrual request
+
+```json
+{
+  "customer_id": "cust-1",
+  "order_id": "order-1001",
+  "home24_merch_cents": 1200,
+  "mirakl_merch_cents": 1000,
+  "shipping_cents": 490,
+  "currency": "EUR",
+  "idempotency_key": "accrue-1001"
+}
+```
+
+This creates a pending accrual of 170 points:
+
+```text
+1200 cents home24 merchandise -> 120 points
+1000 cents Mirakl merchandise ->  50 points
+490 cents shipping            ->   0 points
+```
+
+---
+
+## Tech stack
+
+- Go
+- MariaDB
+- Docker / Docker Compose
+- AWS Lambda
+- Amazon API Gateway
+- Amazon RDS for MariaDB
+- AWS Secrets Manager
+- AWS SAM
+- GitHub Actions
+- Makefile
+
+---
+
+## Development and validation tools
+
+The project was developed and validated using VS Code, Git/GitHub, Docker Compose, Make, DBeaver, Postman, curl, OpenAPI/Swagger tooling, AWS CLI, AWS SAM CLI and GitHub Actions.
+
+DBeaver was used to inspect the MariaDB schema and test data during local development. Postman and curl were used for manual API and lifecycle testing, primarily against the local Docker environment. The deployed AWS API was validated separately where applicable. The OpenAPI specification documents the REST API contract in `openapi.yaml`.
+
+
+---
+
+## Project structure
+
+```text
+.
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+├── Dockerfile
+├── Makefile
+├── README.md
+├── docker-compose.yml
+├── events/
+│   └── event.json
+├── openapi.yaml
+├── samconfig.toml
+├── schema-init/
+│   ├── go.mod
+│   ├── go.sum
+│   └── main.go
+├── sql/
+│   └── schema/
+│       └── 001_schema.sql
+├── template.yaml
+└── treuepunkte-function/
+    ├── Makefile
+    ├── go.mod
+    ├── go.sum
+    ├── main.go
+    ├── integrationtests/
+    │   └── aws_integration_test.go
+    └── internal/
+        ├── config/
+        ├── domain/
+        ├── http/
+        ├── service/
+        └── storage/
+```
+
+Notes:
+
+- `sql/schema/001_schema.sql` is the canonical database schema.
+- `schema-init/` contains the Lambda custom resource code for applying the schema during AWS deployment.
+- Build artifacts such as `bootstrap` are not part of the source structure.
+
+---
+
+## Local development
 
 ### Prerequisites
 
 - Docker
+- Docker Compose
 - Go
-- AWS CLI (configured)
-- AWS SAM CLI
+- Make
 
----
-
-### Local Development (Docker)
-
-Start the local environment:
+### Start local environment
 
 ```bash
 make up
 ```
 
-View logs:
+This starts:
+
+- MariaDB container
+- Go API container
+
+The local database is initialized from:
+
+```text
+sql/schema/001_schema.sql
+```
+
+The API is available at:
+
+```text
+http://localhost:8080
+```
+
+### Health check
+
+```bash
+curl http://localhost:8080/health
+```
+
+Expected response:
+
+```text
+ok
+```
+
+### View logs
 
 ```bash
 make logs
 ```
 
-Stop the environment:
+### Stop local environment
 
 ```bash
 make down
 ```
 
-The application will be available at:
+### Remove local containers and database volume
 
+```bash
+make clean
 ```
-http://localhost:8080
-```
+
+Warning: `make clean` removes the Docker volume and deletes local database data.
 
 ---
 
-### Tests
+## Testing
 
-Run all tests:
+Run all Go tests:
 
 ```bash
 make test
 ```
 
-Run unit tests:
+Run service/domain tests:
 
 ```bash
 make test-unit
@@ -225,156 +372,228 @@ Run integration tests:
 make test-integration
 ```
 
+The project also includes manual API lifecycle testing with real HTTP requests against the local Docker environment.
+
+Tested scenarios include:
+
+- accrue -> confirm -> redeem -> restore
+- revoke before confirm
+- revoke after confirm
+- duplicate requests with the same idempotency key
+- redeeming more points than available
+- missing accrue transaction for confirm/revoke
+- missing redeem transaction for restore
+- validation of invalid or negative input values
+- balance consistency after rejected requests
+- point calculation for home24 merchandise, Mirakl/marketplace merchandise and shipping
+- EUR-only validation for accruals
+- rejection of shipping-only accruals
+
+The AWS integration test is opt-in and requires an already deployed API endpoint. It is enabled with `RUN_AWS_INTEGRATION=1` and `AWS_BASE_URL`.
+
 ---
 
-### Deployment (AWS)
+## AWS deployment
 
-Deploy to staging:
+The AWS infrastructure is defined in:
+
+```text
+template.yaml
+samconfig.toml
+```
+
+The SAM template provisions:
+
+- API Gateway HTTP API
+- Go Lambda function
+- schema initialization Lambda
+- Lambda-backed CloudFormation custom resource
+- private RDS MariaDB database
+- VPC with public and private subnets
+- NAT Gateway
+- S3 Gateway VPC Endpoint
+- Lambda and database security groups
+- Secrets Manager managed database password
+
+The Go Lambda runs inside private subnets and connects to the private RDS instance through the database security group.
+
+The database schema is initialized during deployment by the schema-init Lambda custom resource.
+
+### Validate and build
+
+```bash
+make validate
+make build
+```
+
+### Deploy staging manually
 
 ```bash
 make deploy-staging
 ```
 
-Deploy to production:
-
-```bash
-make deploy-production
-```
-
----
-
-## Deploy & Run (from scratch)
-
-### Deploy to staging
+Equivalent SAM command:
 
 ```bash
 sam deploy --config-env staging
 ```
 
-### Get API endpoint
-
-After deployment, the API endpoint is printed in the output.
-
-Set it as an environment variable:
+### Deploy production manually
 
 ```bash
-export API_URL="https://<api-id>.execute-api.eu-west-1.amazonaws.com"
+make deploy-production
 ```
 
-### Test the service
+Equivalent SAM command:
 
 ```bash
-curl "$API_URL/health"
+sam deploy --config-env production
 ```
+
+Staging and production use separate SAM configuration environments and separate stack names:
+
+| Environment | Stack name                   |
+| ----------- | ---------------------------- |
+| staging     | `treuepunkte-iac-staging`    |
+| production  | `treuepunkte-iac-production` |
 
 ---
 
-## Cleanup
+## AWS cleanup
 
-To remove all AWS resources (staging):
+AWS deployments create cost-relevant resources, including RDS, NAT Gateway and networking resources.
+
+To delete the staging stack:
 
 ```bash
 aws cloudformation delete-stack \
-  --stack-name treuepunkte-iac-staging
+  --stack-name treuepunkte-iac-staging \
+  --region eu-west-1
 ```
 
----
+Wait until deletion is complete:
 
-## CI/CD Pipeline
+```bash
+aws cloudformation wait stack-delete-complete \
+  --stack-name treuepunkte-iac-staging \
+  --region eu-west-1
+```
 
-This project uses GitHub Actions for continuous integration and manual deployments.
-
-### Continuous Integration (CI)
-
-On every push to the main branch and on every pull request:
-
-- run tests (`make test`)
-- validate SAM template (`make validate`)
-- build application (`make build`)
-
-### Manual Deployment – Staging
-
-Staging deployment is started manually via GitHub Actions by selecting the `staging` deploy target.
-
-### Manual Deployment – Production
-
-Production deployment is started manually via GitHub Actions by selecting the `production` deploy target and confirming the production deployment. The production environment is protected by a required reviewer.
+Because the RDS resource uses snapshot policies, stack deletion may create a final database snapshot.
 
 ---
 
-## Database Initialization
+## CI/CD
 
-**Local (Docker)**
-MariaDB executes SQL scripts from `sql/schema/`.
+GitHub Actions is used for continuous integration and manual deployments.
 
-**AWS**
-A dedicated Lambda (`schema-init`) initializes the schema during deployment.
+Workflow file:
 
----
+```text
+.github/workflows/ci.yml
+```
 
-## API Endpoints
+### Continuous Integration
 
-| Method | Endpoint                          | Description             |
-| ------ | --------------------------------- | ----------------------- |
-| GET    | `/health`                         | Health check            |
-| POST   | `/v1/points/accrue`               | Create pending points   |
-| POST   | `/v1/points/confirm`              | Confirm points          |
-| POST   | `/v1/points/revoke`               | Revoke points           |
-| POST   | `/v1/points/redeem`               | Redeem points           |
-| POST   | `/v1/points/restore`              | Restore points          |
-| GET    | `/v1/customers/{id}/balance`      | Get current balance     |
-| GET    | `/v1/customers/{id}/transactions` | Get transaction history |
+CI runs automatically on:
+
+- push to `main`
+- pull request to `main`
+
+The CI job runs:
+
+```bash
+make test
+make validate
+make build
+```
+
+### Manual staging deployment
+
+Staging deployment is started manually through GitHub Actions by selecting:
+
+```text
+deploy_target = staging
+```
+
+### Manual production deployment
+
+Production deployment is started manually through GitHub Actions by selecting:
+
+```text
+deploy_target = production
+confirm_production = yes
+```
+
+The production environment is additionally protected by a GitHub Environment required reviewer rule.
+
+Pushes to `main` do not automatically deploy AWS resources.
 
 ---
 
 ## Configuration
 
-The application is configured via environment variables.
+The application is configured through environment variables.
 
-### Main variables
+Main variables:
 
-- APP_ENV
-- APP_PORT
-- DB_HOST
-- DB_PORT
-- DB_USER
-- DB_PASS
-- DB_NAME
+```text
+APP_ENV
+APP_PORT
+DB_HOST
+DB_PORT
+DB_USER
+DB_PASS
+DB_NAME
+```
 
-### Local Environment
+### Local configuration
 
-Docker Compose provides default values:
+Docker Compose provides local development values:
 
-```env
+```text
+APP_ENV=local
+APP_PORT=8080
+DB_HOST=db
+DB_PORT=3306
 DB_USER=treuepunkte
 DB_PASS=treuepunkte
 DB_NAME=treuepunkte
 ```
 
-### AWS Environment
+### AWS configuration
 
-- credentials stored in AWS Secrets Manager
-- injected via CloudFormation
-- no secrets in the repository
+In AWS, database connection values are provided by CloudFormation.
 
----
-
-## Testing Strategy
-
-- Unit tests (service layer)
-- Integration tests (API + database interaction)
-- Manual end-to-end tests
+The RDS master password is managed by AWS Secrets Manager and is not stored in the repository.
 
 ---
 
-## Notes / Limitations
+## Current limitations
 
-- Test coverage is focused on core functionality
+The current scope focuses on the core loyalty lifecycle and infrastructure deployment.
+
+Not included in the current implementation:
+
+- automatic 14-day activation scheduler
+- admin/reporting API
+- asynchronous event processing
+- RDS Proxy
+- CloudWatch alarms
+- production-grade observability setup
+- database migration tool
 
 ---
 
-## Future Improvements
+## Future improvements
 
-- Improve test coverage
-- Add structured logging and monitoring
-- Implement secret rotation
+Possible next steps:
+
+- add a scheduler for automatic point activation after the waiting period
+- introduce a database migration tool
+- add RDS Proxy for improved Lambda-to-RDS connection handling
+- add CloudWatch alarms and structured operational dashboards
+- add API Gateway throttling and rate limiting
+- introduce SQS or EventBridge for asynchronous event processing
+- add an admin/reporting API
+- improve test coverage for repository and HTTP handler edge cases
